@@ -1,0 +1,26 @@
+# ---------- Stage 1: Build ----------
+FROM golang:1.23-bookworm AS builder
+
+WORKDIR /build
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN go build -o app ./cmd/server/main.go
+
+
+# ---------- Stage 2: Run ----------
+FROM debian:bookworm-slim
+
+WORKDIR /app
+
+# Copy only the compiled binary from builder
+COPY --from=builder /build/app .
+
+# Expose the port
+EXPOSE 3009
+
+# Run the compiled binary
+CMD ["./app"]
