@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"net/mail"
 	"net/smtp"
 	"strconv"
 	"strings"
@@ -67,10 +66,10 @@ func VerifyEmailHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-func isValidEmail(email string) bool {
-	_, err := mail.ParseAddress(email)
-	return err == nil
-}
+// func isValidEmail(email string) bool {
+// 	_, err := mail.ParseAddress(email)
+// 	return err == nil
+// }
 
 func hasMX(email string) bool {
 	at := strings.LastIndex(email, "@")
