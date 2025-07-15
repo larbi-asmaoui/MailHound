@@ -15,6 +15,7 @@ const sidebarLinks = [
   { label: "Single Email", icon: Mail, href: "/single" },
   { label: "Bulk Upload", icon: Upload, href: "/upload" },
   { label: "Score", icon: ShieldCheck, href: "/score" },
+  { label: "Email Extractor", icon: Mail, href: "/extractor" },
   { label: "Recent Lists", icon: BarChart3, href: "/lists" },
   // { label: "Catch-all", icon: ShieldCheck, href: "/catchall" },
   // { label: "Upgrade", icon: DollarSign, href: "/upgrade" },
@@ -25,7 +26,7 @@ export default function Sidebar() {
   return (
     <aside className="fixed top-0 left-0 w-64 h-screen bg-background-sidebar border-r border-gray-800 flex flex-col py-6 px-2 z-50">
       <div className="flex items-center h-16 px-4 mb-8">
-        <span className="text-2xl font-bold text-primary">Verifier</span>
+        <span className="text-2xl font-bold text-primary">MailHound</span>
       </div>
       <nav className="flex-1">
         <ul className="space-y-1">
