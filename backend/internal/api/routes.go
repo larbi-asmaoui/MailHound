@@ -12,18 +12,17 @@ func RegisterRoutes(r *gin.Engine) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	// Email verification
-	r.POST("/api/verify", service.VerifyEmailHandler)
-
 	// stats
 	r.GET("/api/stats", GetDashboardStatsHandler)
 
-	// Bulk email verification
+	// Email verification
+	r.POST("/api/verify", service.VerifyEmailHandler)
 	r.POST("/api/bulk-verify", BulkVerifyHandler)
 	r.GET("/api/upload/job/:jobId/results/download", DownloadJobResultsHandler)
 	r.GET("/api/upload/job/:jobId/results", GetJobResultsHandler)
 
-	// Bulk email extractor
+	// email extractor
+	r.POST("/api/extract", SingleExtractHandler)
 	r.POST("/api/bulk-extract", BulkExtractHandler)
 
 }
