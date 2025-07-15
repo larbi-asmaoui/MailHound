@@ -3,7 +3,6 @@ package api
 import (
 	"backend/internal/service"
 	"encoding/csv"
-	"fmt"
 	"io"
 	"net/http"
 	"runtime"
@@ -13,8 +12,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type BulkExtractResult struct {
+	Site   string `json:"site"`
+	Email  string `json:"email"`
+	Domain string `json:"domain"`
+}
+
 func BulkExtractHandler(c *gin.Context) {
-	// Récupérer le fichier CSV uploadé
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Le fichier est requis / الملف مطلوب"})
@@ -27,7 +31,6 @@ func BulkExtractHandler(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// Lire l'en-tête du CSV
 	reader := csv.NewReader(file)
 	reader.TrimLeadingSpace = true
 	headers, err := reader.Read()
@@ -36,7 +39,6 @@ func BulkExtractHandler(c *gin.Context) {
 		return
 	}
 
-	// Trouver la colonne du site web
 	websiteCol := c.PostForm("websiteCol")
 	if websiteCol == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Le nom de la colonne du site web est requis / اسم عمود الموقع الإلكتروني مطلوب"})
@@ -54,7 +56,6 @@ func BulkExtractHandler(c *gin.Context) {
 		return
 	}
 
-	// Extraire les URLs des sites web
 	websites := []string{}
 	for {
 		record, err := reader.Read()
@@ -74,22 +75,20 @@ func BulkExtractHandler(c *gin.Context) {
 		return
 	}
 
-	// Lancer l'extraction en parallèle
 	numWorkers := runtime.NumCPU() * 4
 	type Job struct {
 		Index   int
 		Website string
 	}
-	type Result struct {
-		Index   int
-		Website string
-		Emails  []string
-		Phones  []string
-		Socials []string
-		Error   string
+
+	type EmailResult struct {
+		Site   string
+		Email  string
+		Domain string
 	}
+
 	jobCh := make(chan Job, len(websites))
-	resultCh := make(chan Result, len(websites))
+	resultCh := make(chan []EmailResult, len(websites))
 	var wg sync.WaitGroup
 
 	for i := 0; i < numWorkers; i++ {
@@ -97,18 +96,18 @@ func BulkExtractHandler(c *gin.Context) {
 		go func() {
 			defer wg.Done()
 			for job := range jobCh {
-				emails, phones, socials, err := service.ExtractContactsFromSite(job.Website)
-				res := Result{
-					Index:   job.Index,
-					Website: job.Website,
-					Emails:  emails,
-					Phones:  phones,
-					Socials: socials,
+				emails, err := service.ExtractEmailsFromSiteFast(job.Website)
+				results := []EmailResult{}
+				if err == nil {
+					for _, em := range emails {
+						results = append(results, EmailResult{
+							Site:   job.Website,
+							Email:  em.Email,
+							Domain: em.Domain,
+						})
+					}
 				}
-				if err != nil {
-					res.Error = fmt.Sprintf("Erreur: %v / خطأ: %v", err, err)
-				}
-				resultCh <- res
+				resultCh <- results
 			}
 		}()
 	}
@@ -125,28 +124,12 @@ func BulkExtractHandler(c *gin.Context) {
 		close(resultCh)
 	}()
 
-	// Collecter les résultats
-	results := make([]Result, len(websites))
+	allResults := []BulkExtractResult{}
 	for res := range resultCh {
-		results[res.Index] = res
+		for _, r := range res {
+			allResults = append(allResults, BulkExtractResult(r))
+		}
 	}
 
-	// Générer un CSV de sortie
-	var output strings.Builder
-	writer := csv.NewWriter(&output)
-	writer.Write([]string{"Website", "Emails", "Phones", "Socials", "Error"})
-	for _, r := range results {
-		writer.Write([]string{
-			r.Website,
-			strings.Join(r.Emails, "; "),
-			strings.Join(r.Phones, "; "),
-			strings.Join(r.Socials, "; "),
-			r.Error,
-		})
-	}
-	writer.Flush()
-
-	c.Header("Content-Type", "text/csv")
-	c.Header("Content-Disposition", "attachment; filename=bulk_extract_results.csv")
-	c.String(http.StatusOK, output.String())
+	c.JSON(http.StatusOK, gin.H{"results": allResults})
 }
